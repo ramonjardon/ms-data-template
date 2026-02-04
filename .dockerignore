@@ -1,0 +1,31 @@
+# Archivos de construcción y cache
+target/
+*.class
+*.jar
+*.war
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.project
+.classpath
+.settings/
+
+# Git
+.git/
+.gitignore
+
+# Documentación y otros
+README.md
+*.md
+.DS_Store
+*.log
+
+# Permitir solo lo necesario
+!src/
+!pom.xml
+!mvnw
+!mvnw.cmd
+!.mvn/
+.mvn/wrapper/maven-wrapper.jar
