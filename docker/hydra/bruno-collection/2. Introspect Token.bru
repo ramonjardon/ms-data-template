@@ -1,0 +1,41 @@
+meta {
+  name: 2. Introspect Token
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{hydra_admin_url}}/admin/oauth2/introspect
+  body: formUrlEncoded
+  auth: none
+}
+
+headers {
+  Content-Type: application/x-www-form-urlencoded
+}
+
+body:form-urlencoded {
+  token: {{access_token}}
+}
+
+docs {
+  # Token Introspection
+
+  Verifica si un token es válido y obtiene su información.
+
+  ## Uso
+  - Validar tokens
+  - Obtener metadata del token
+  - Verificar expiración
+
+  ## Respuesta (token válido)
+  ```json
+  {
+    "active": true,
+    "client_id": "63029b8e-874e-4062-909c-d6391becba4f",
+    "exp": 1738800000,
+    "iat": 1738713600,
+    "scope": "openid profile email"
+  }
+  ```
+}

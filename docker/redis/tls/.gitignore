@@ -1,0 +1,9 @@
+# Certificados TLS (autofirmados para desarrollo)
+*.crt
+*.key
+*.csr
+*.srl
+*.pem
+
+# No ignorar el script de generación
+!generate-certs.sh

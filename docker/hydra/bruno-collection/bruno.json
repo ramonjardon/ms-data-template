@@ -1,0 +1,16 @@
+meta {
+  name: Ory Hydra OAuth2
+  type: collection
+  version: 1.0.0
+}
+
+vars {
+  hydra_url: http://localhost:4444
+  hydra_admin_url: http://localhost:4445
+  api_url: http://localhost:8080
+  client_id: 63029b8e-874e-4062-909c-d6391becba4f
+  client_secret: ms-data-client-secret-change-in-production
+  access_token:
+  refresh_token:
+  redirect_uri: http://localhost:8080/callback
+}

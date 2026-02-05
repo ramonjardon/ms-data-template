@@ -1,0 +1,105 @@
+# Configuración de Dex para OAuth2 Client Credentials Flow
+# Optimizado para autenticación service-to-service
+
+issuer: https://localhost:5556/dex
+
+# Storage en memoria (para desarrollo)
+# Para producción usa PostgreSQL, MySQL o etcd
+storage:
+  type: memory
+
+# Configuración Web
+web:
+  https: 0.0.0.0:5556
+  tlsCert: /etc/dex/tls/dex.crt
+  tlsKey: /etc/dex/tls/dex.key
+
+# Telemetría y métricas
+telemetry:
+  http: 0.0.0.0:5558
+
+# OAuth2 Configuration
+oauth2:
+  # Tiempo de vida de tokens
+  skipApprovalScreen: true
+  alwaysShowLoginScreen: false
+  responseTypes: ["code", "token", "id_token"]
+
+# Habilitar CORS para desarrollo
+# web:
+#   allowedOrigins: ["*"]
+
+# Logging
+logger:
+  level: "info"
+  format: "json"
+
+# Static clients configurados
+staticClients:
+  # Cliente 1: Microservicio de datos
+  - id: ms-data-client
+    redirectURIs:
+      - 'http://localhost:8080/callback'
+      - 'http://localhost:8080/login/oauth2/code/dex'
+    name: 'MS Data Client'
+    secret: ms-data-client-secret-change-in-production
+    public: false
+
+  # Cliente 2: Aplicación web
+  - id: web-app-client
+    redirectURIs:
+      - 'http://localhost:3000/callback'
+    name: 'Web Application'
+    secret: web-app-client-secret-change-in-production
+    public: false
+
+  # Cliente 3: Cliente para testing
+  - id: test-client
+    redirectURIs:
+      - 'http://localhost:9090/callback'
+    name: 'Test Client'
+    secret: test-client-secret
+    public: false
+
+# Static passwords (usuarios estáticos para testing)
+# Para producción usa connectors (LDAP, SAML, OIDC, etc.)
+enablePasswordDB: true
+staticPasswords:
+  - email: "admin@example.com"
+    hash: "$2a$10$2b2cU8CPhOTaGrs1HRQuAueS7JTT5ZHsHSzYiFPm1leZck7Mc8T4W"  # password: password
+    username: "admin"
+    userID: "08a8684b-db88-4b73-90a9-3cd1661f5466"
+
+  - email: "user@example.com"
+    hash: "$2a$10$2b2cU8CPhOTaGrs1HRQuAueS7JTT5ZHsHSzYiFPm1leZck7Mc8T4W"  # password: password
+    username: "user"
+    userID: "41331323-6f44-45e6-b3b9-2c4b60c02be5"
+
+# Connectors para integraciones externas (comentado por defecto)
+# connectors:
+#   - type: ldap
+#     id: ldap
+#     name: LDAP
+#     config:
+#       host: ldap.example.com:636
+#       # ... configuración LDAP
+
+#   - type: oidc
+#     id: google
+#     name: Google
+#     config:
+#       issuer: https://accounts.google.com
+#       clientID: your-client-id
+#       clientSecret: your-client-secret
+#       redirectURI: https://localhost:5556/dex/callback
+
+# Expiry configuration
+expiry:
+  deviceRequests: "5m"
+  signingKeys: "6h"
+  idTokens: "24h"
+  authRequests: "24h"
+  refreshTokens:
+    reuseInterval: "3s"
+    validIfNotUsedFor: "2160h"  # 90 días
+    absoluteLifetime: "3960h"    # 165 días

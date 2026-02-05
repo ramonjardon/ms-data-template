@@ -1,0 +1,31 @@
+meta {
+  name: 5. OpenID Configuration
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{hydra_url}}/.well-known/openid-configuration
+  body: none
+  auth: none
+}
+
+docs {
+  # OpenID Connect Discovery
+
+  Obtiene la configuración completa de OpenID Connect de Hydra.
+
+  ## Uso
+  - Descubrir endpoints disponibles
+  - Obtener información de capacidades
+  - Configuración automática de clientes
+
+  ## Información incluida
+  - issuer
+  - authorization_endpoint
+  - token_endpoint
+  - jwks_uri
+  - Grant types soportados
+  - Response types soportados
+  - Scopes soportados
+}

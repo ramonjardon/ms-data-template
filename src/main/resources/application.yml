@@ -8,7 +8,111 @@ server:
     threads:
       # Estos son hilos de plataforma. Con 0.5 CPU no queremos muchos.
       max: 20
+
 spring:
   threads:
     virtual:
       enabled: true
+
+  mvc:
+    async:
+      request-timeout: 10s
+
+  # Configuración de Jackson
+  jackson:
+    # Serialización
+    serialization:
+      write-dates-as-timestamps: false
+      write-date-timestamps-as-nanoseconds: false
+      fail-on-empty-beans: false
+      indent-output: false  # En producción no indentar (ahorro de memoria)
+
+    # Deserialización
+    deserialization:
+      fail-on-unknown-properties: false
+      read-date-timestamps-as-nanoseconds: false
+      adjust-dates-to-context-time-zone: false
+
+    # Formato de fechas (ISO-8601)
+    date-format: yyyy-MM-dd'T'HH:mm:ss.SSSXXX
+    time-zone: Europe/Madrid
+    locale: es_ES
+
+    # Configuración para tipos polimórficos
+    default-property-inclusion: non_null
+
+    # Configuración para Native Image (reduce uso de reflexión)
+    mapper:
+      auto-detect-getters: true
+      auto-detect-setters: true
+      auto-detect-is-getters: true
+      auto-detect-fields: false  # Desactivar detección de campos para Native Image
+
+  # OAuth2 Resource Server - Validación de tokens JWT
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${OAUTH2_ISSUER_URI:http://localhost:4444}
+          jwk-set-uri: ${OAUTH2_JWK_SET_URI:http://localhost:4444/.well-known/jwks.json}
+
+  # ════════════════════════════════════════════════════════════
+  # CQRS - Dual DataSource Configuration
+  # ════════════════════════════════════════════════════════════
+  # Configuración para Command y Query separados
+  # Actualmente apuntan a la misma DB, pero preparado para escalar
+  # ════════════════════════════════════════════════════════════
+
+  datasource:
+    # Command DataSource (Escrituras)
+    command:
+      jdbc-url: ${COMMAND_DB_URL:jdbc:postgresql://localhost:5432/msdata}
+      username: ${COMMAND_DB_USER:msdata_user}
+      password: ${COMMAND_DB_PASSWORD:changeme}
+      driver-class-name: org.postgresql.Driver
+
+      # HikariCP - Optimizado para escrituras (menos conexiones)
+      hikari:
+        pool-name: CommandPool
+        minimum-idle: 2
+        maximum-pool-size: 5         # Pocas conexiones para writes
+        connection-timeout: 20000
+        idle-timeout: 300000
+        max-lifetime: 1200000
+        auto-commit: false            # Control manual para transacciones
+
+    # Query DataSource (Lecturas)
+    query:
+      jdbc-url: ${QUERY_DB_URL:jdbc:postgresql://localhost:5432/msdata}
+      username: ${QUERY_DB_USER:msdata_user}
+      password: ${QUERY_DB_PASSWORD:changeme}
+      driver-class-name: org.postgresql.Driver
+
+      # HikariCP - Optimizado para lecturas (más conexiones)
+      hikari:
+        pool-name: QueryPool
+        minimum-idle: 3
+        maximum-pool-size: 10        # Más conexiones para reads
+        connection-timeout: 20000
+        idle-timeout: 300000
+        max-lifetime: 1200000
+        read-only: true              # Optimización para queries
+
+  # JPA/Hibernate Configuration
+  jpa:
+    open-in-view: false              # Deshabilitado para APIs REST
+    show-sql: false                   # true solo en dev
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: false
+        jdbc:
+          time_zone: Europe/Madrid   # Consistente con Jackson
+          batch_size: 20             # Batch inserts/updates
+        order_inserts: true
+        order_updates: true
+        # Optimizaciones para Native Image
+        bytecode:
+          use_reflection_optimizer: false
+          # JWK Set URI para validar la firma de los tokens
+          jwk-set-uri: ${OAUTH2_JWK_SET_URI:http://localhost:4444/.well-known/jwks.json}
