@@ -1,0 +1,144 @@
+services:
+  # --- TU MICROSERVICIO ---
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: spring_app_local
+    ports:
+      - "8080:8080"
+    environment:
+      # Conexión Postgres
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/myapp_db?serverTimezone=Europe/Madrid
+      - SPRING_DATASOURCE_USERNAME=user
+      - SPRING_DATASOURCE_PASSWORD=password
+
+      # Conexión Kafka (Usando el listener interno de Docker)
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+
+      # Conexión MongoDB
+      - SPRING_DATA_MONGODB_URI=mongodb://admin:password@mongodb:27017/admin
+
+      # Conexión Redis (Añadido para el micro)
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
+
+      # Conexión MinIO (Añadido para el micro)
+      - MINIO_ENDPOINT=http://minio:9000
+      - MINIO_ACCESS_KEY=admin
+      - MINIO_SECRET_KEY=password
+      - MINIO_BUCKET_NAME=my-files
+
+      # Configuración de Java 21 y Timezone
+      - SPRING_THREADS_VIRTUAL_ENABLED=true
+      - TZ=Europe/Madrid
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+      redis:
+        condition: service_started
+      mongodb:
+        condition: service_started
+      minio:
+        condition: service_started
+    networks:
+      - app-network
+
+  # --- POSTGRESQL 17 ---
+  postgres:
+    image: postgres:17-alpine
+    container_name: postgres_local
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: myapp_db
+      TZ: "Europe/Madrid"
+      PGTZ: "Europe/Madrid"
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d myapp_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+
+  # --- KAFKA CONFLUENT KRAFT ---
+  kafka:
+    image: confluentinc/cp-kafka:7.6.0
+    container_name: kafka_local
+    ports:
+      - "9092:9092"
+    environment:
+      TZ: "Europe/Madrid"
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka:9093'
+      KAFKA_LISTENERS: 'PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:9092' # Cambiado localhost por kafka para red interna
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
+    networks:
+      - app-network
+
+  # --- MONGODB ---
+  mongodb:
+    image: mongo:6.0
+    container_name: mongo_local
+    environment:
+      TZ: "Europe/Madrid"
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - app-network
+
+  # --- REDIS ---
+  redis:
+    image: redis:7-alpine
+    container_name: redis_local
+    environment:
+      TZ: "Europe/Madrid"
+    ports:
+      - "6379:6379"
+    networks:
+      - app-network
+
+  # --- MINIO ---
+  minio:
+    image: minio/minio:latest
+    container_name: minio_local
+    environment:
+      TZ: "Europe/Madrid"
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: password
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  mongo_data:
+  minio_data:

@@ -1,66 +1,44 @@
-# Dockerfile optimizado para Leapcell con GraalVM Native Image
-# Usando Maven Wrapper (mvnw) - no requiere instalar Maven
-
-FROM ghcr.io/graalvm/native-image-community:25-ol9 AS builder
-
-WORKDIR /build
-
-# Copiar Maven Wrapper y POM
-COPY .mvn .mvn
-COPY mvnw pom.xml ./
-
-# Dar permisos de ejecución al wrapper
-RUN chmod +x mvnw
-
-# Descargar dependencias (se cachea si pom.xml no cambia)
-RUN ./mvnw dependency:go-offline -B
-
-# Copiar el código fuente
-COPY src ./src
-
-# Construir la imagen nativa
-RUN ./mvnw -Pnative native:compile -DskipTests \
-    -Dspring-boot.build-image.skip=true \
-    -Dspring.native.remove-unused-autoconfig=true
-
-# ============================================
-# Stage 2: Runtime - Debian Slim (más ligera)
-# ============================================
-FROM debian:12-slim
-
-# Instalar solo lo esencial + curl para health checks
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-    ca-certificates \
-    curl \
-    libstdc++6 \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
-    && groupadd -r -g 1001 appuser \
-    && useradd -r -u 1001 -g appuser -m -s /sbin/nologin appuser
+# --- ETAPA 1: Construcción (Build) ---
+# Actualizado a JDK 25 sobre Alpine
+FROM eclipse-temurin:25-jdk-alpine AS build
 
 WORKDIR /app
 
-# Copiar ejecutable nativo
-COPY --from=builder --chown=appuser:appuser /build/target/ms-data-template /app/application
+# 1. Copiamos el wrapper de Maven y el pom.xml
+COPY .mvn/ .mvn
+COPY mvnw pom.xml ./
+# Descargamos dependencias (aprovechando la caché de Docker)
+RUN ./mvnw dependency:go-offline -B
 
-# Cambiar a usuario no-root
-USER appuser
+# 2. Copiamos el código fuente y compilamos
+COPY src ./src
+RUN ./mvnw clean package -DskipTests -B
 
-# Variables de entorno
-ENV LANG=C.UTF-8 \
-    LC_ALL=C.UTF-8
+# --- ETAPA 2: Ejecución (Runtime) ---
+# Usamos el JRE 25 para minimizar el tamaño de la imagen final
+FROM eclipse-temurin:25-jre-alpine
 
+WORKDIR /app
+
+# 3. Soporte para Timezone Europe/Madrid
+RUN apk add --no-cache tzdata
+ENV TZ=Europe/Madrid
+
+# 4. Copiamos el artefacto desde la etapa de build
+COPY --from=build /app/target/*.jar app.jar
+
+# 5. Configuración optimizada para Java 25 y Virtual Threads
+# -XX:+UseZGC y -XX:+ZGenerational: Ideal para Java 25, reduce latencias de GC casi a cero
+# -XX:MaxRAMPercentage=75.0: Gestión dinámica de memoria en contenedores
+ENTRYPOINT ["java", \
+            "-XX:+UseContainerSupport", \
+            "-XX:MaxRAMPercentage=75.0", \
+            "-XX:+UseZGC", \
+            "-XX:+ZGenerational", \
+            "-Duser.timezone=Europe/Madrid", \
+            "-Djdk.virtualThreadScheduler.maxPoolSize=256", \
+            "-jar", \
+            "app.jar"]
+
+# Puerto de la aplicación
 EXPOSE 8080
-
-# Health check
-HEALTHCHECK --interval=30s \
-            --timeout=3s \
-            --start-period=5s \
-            --retries=3 \
-    CMD curl -f http://localhost:8080/actuator/health/liveness || exit 1
-
-ENTRYPOINT ["/app/application", \
-    "-XX:MaximumHeapSizePercent=75", \
-    "-XX:MaximumYoungGenerationSizePercent=25", \
-    "-Djdk.virtualThreadScheduler.maxQueueSize=10000"]
