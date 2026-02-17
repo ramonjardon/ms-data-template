@@ -31,7 +31,10 @@ spring:
 
   # Configuración de Jackson optimizada para records y Native Image
   jackson:
-    # Serialización
+    date-format: yyyy-MM-dd'T'HH:mm:ss.SSSXXX
+    time-zone: Europe/Madrid
+    locale: es_ES
+    default-property-inclusion: non_null # Serialización
     serialization:
       indent-output: false
 
