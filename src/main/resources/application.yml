@@ -1,0 +1,44 @@
+server:
+  shutdown:
+    graceful: true
+    timeout: 30s
+  compression:
+    enabled: true
+    mime-types: text/html,text/xml,text/plain,text/css,text/javascript,application/javascript,application/json,application/xml
+    min-response-size: 1024
+  tomcat:
+    max-connections: 500
+    accept-count: 100
+    connection-timeout: 10000
+    threads:
+      max: 20
+      min-spare: 10
+
+spring:
+  threads:
+    virtual:
+      enabled: true
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+  http:
+   encoding:
+    enabled: true
+    charset: UTF-8
+    force: true
+  mvc:
+    async:
+      request-timeout: 10000
+
+  # Configuración de Jackson optimizada para records y Native Image
+  jackson:
+    date-format: yyyy-MM-dd'T'HH:mm:ss.SSSXXX
+    time-zone: Europe/Madrid
+    locale: es_ES
+    default-property-inclusion: non_null # Serialización
+    serialization:
+      indent-output: false
+
+
+
+
+
